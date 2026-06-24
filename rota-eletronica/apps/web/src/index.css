@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --urban-green: #197c63;
+  --urban-bg: #F0F5F6;
+  --urban-gray: #0D394F;
+}
+
+/* Cor do "Urban" apenas no logo (login e sidebar) */
+.text-urban-brand {
+  color: #13cc9d;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--urban-bg);
+  color: var(--urban-gray);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Sidebar e Topbar: azul petróleo */
+.bg-sidebar {
+  --tw-bg-opacity: 1;
+  background-color: #0d394f;
+}
+
+/* Cards e painéis: fundo claro */
+.bg-sidebar\/80 {
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px rgb(13 57 79 / 0.12);
+}
+
+/* Área de conteúdo: texto escuro e inputs claros */
+.content-area .text-urban-gray-light {
+  color: #0D394F;
+}
+.content-area .text-urban-gray-data {
+  color: #5A7A72;
+}
+.content-area .bg-white\/5 {
+  background-color: #FFFFFF;
+}
+.content-area .hover\:bg-white\/5:hover,
+.content-area .hover\:bg-white\/10:hover,
+.content-area .hover\:bg-white\/15:hover {
+  background-color: rgb(243 244 246);
+}
+
+/* Páginas de auth (login, esqueci senha): texto escuro em fundo claro */
+.auth-page .text-urban-gray-light {
+  color: #0D394F;
+}
+.auth-page .text-urban-gray-data {
+  color: #5A7A72;
+}
+.auth-page .bg-white\/5 {
+  background-color: #FFFFFF;
+}
+
+/* Tabela de detalhes — relatório de importação de alunos */
+.import-result-detail-table tbody tr > td {
+  background-color: transparent;
+  transition: background-color 150ms ease;
+}
+
+@media (hover: hover) {
+  .import-result-detail-table tbody tr:hover > td {
+    background-color: #1a6578;
+  }
+}
+
+.auth-page.login-waves {
+  background: linear-gradient(
+    180deg,
+    #e5eeec 0%,
+    #197c63 25%,
+    #1a8a6e 50%,
+    #134D5F 75%,
+    #0d394f 100%
+  );
+  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Pesquisa de endereço nos mapas — estilo do host (gmp-place-autocomplete) */
+gmp-place-autocomplete {
+  background-color: light-dark(rgb(255, 255, 255), rgb(19, 19, 20));
+  border: 1px solid rgb(0, 0, 0);
+  border-radius: 3px;
+  box-sizing: border-box;
+  color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));
+  color-scheme: light;
+  display: block;
+  font-family: "Google Sans Text", "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 16px;
+}

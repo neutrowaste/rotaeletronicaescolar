@@ -1,0 +1,23 @@
+{
+  "name": "rota-eletronica",
+  "private": true,
+  "version": "1.0.0",
+  "description": "UrbanData - Rota Eletrônica Escolar - Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w api",
+    "dev:web": "npm run dev -w web",
+    "dev:mobile-pais": "npm run start -w apps/mobile-pais",
+    "dev:mobile-motorista": "npm run start -w apps/mobile-motorista",
+    "build:web": "npm run build -w web",
+    "build:packages": "npm run build -w @rota-eletronica/shared-types && npm run build -w @rota-eletronica/shared-utils && npm run build -w @rota-eletronica/shared-mocks",
+    "build:all": "npm run build:packages && npm run build -w web",
+    "test:api": "npm run test -w api"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,328 @@
+// Database UrbanData já existente no PostgreSQL local - não criar novo database.
+// Cliente só em apps/api — evita EPERM no Windows quando a raiz do monorepo
+// já tem outro processo usando node_modules/.prisma/client
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/api-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UsuarioPerfil {
+  ADMIN
+  GESTOR
+  OPERADOR
+}
+
+enum UsuarioStatus {
+  ATIVO
+  INATIVO
+  BLOQUEADO
+}
+
+enum UsuarioSetor {
+  SETOR_TRANSPORTE
+  SETOR_MAPAS
+  SETOR_EDUCACAO
+}
+
+enum UsuarioAuditoriaAcao {
+  CREATE
+  UPDATE
+  STATUS_CHANGE
+  RESET_SENHA
+  LOGIN
+}
+
+model Municipality {
+  id               String   @id @default(cuid())
+  name             String
+  state            String
+  ibgeCode         String   @map("ibge_code")
+  coordinates      Json?    // { lat, lng }
+  responsible      String
+  responsibleRole String?  @map("responsible_role")
+  phone            String
+  email            String
+  contractStart    String   @map("contract_start") // YYYY-MM-DD
+  contractEnd      String   @map("contract_end")
+  contractHistory  Json?    @map("contract_history") // ContractPeriod[]
+  totalStudents   Int      @default(0) @map("total_students")
+  totalVehicles   Int      @default(0) @map("total_vehicles")
+  totalRoutes      Int      @default(0) @map("total_routes")
+  status          String   // active | inactive
+  // URL pública do brasão (ex.: /brasoes/brasao-pederneiras.svg ou CDN).
+  brasaoUrl       String?  @map("brasao_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  schools    School[]
+  garages    Garage[]
+  vehicles   Vehicle[]
+  students   Student[]
+  routes     Route[]
+  usuarioMunicipios UsuarioMunicipio[]
+}
+
+model School {
+  id             String   @id @default(cuid())
+  name           String
+  address        String
+  municipalityId String   @map("municipality_id")
+  coordinates    Json     // { lat, lng }
+  phone          String
+  principal      String
+  totalStudents  Int      @default(0) @map("total_students")
+  status         String   // active | inactive
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  municipality Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  students     Student[]
+  routes       Route[]
+}
+
+model Garage {
+  id             String   @id @default(cuid())
+  name           String
+  address        String
+  municipalityId String   @map("municipality_id")
+  coordinates    Json     // { lat, lng }
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  municipality Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+  routes       Route[]
+}
+
+model Vehicle {
+  id                  String   @id @default(cuid())
+  plate               String   @unique
+  brand               String
+  model               String
+  year                Int
+  color               String
+  capacity            Int
+  municipalityId     String   @map("municipality_id")
+  garageId            String   @map("garage_id")
+  transportType       String   @default("nao_informado") @map("transport_type") // escolar | saude | nao_informado
+  driverResponsible   String?  @map("driver_responsible") // driverId
+  renavam             String
+  chassis             String
+  lastInspectionDate  String   @map("last_inspection_date") // YYYY-MM-DD
+  /// Última posição enviada pelo app do motorista (painel de monitoramento).
+  lastLocationAt      DateTime? @map("last_location_at")
+  lastLocation        Json?    @map("last_location") // { lat, lng }
+  status              String   // active | maintenance | inactive
+  routesCount         Int      @default(0) @map("routes_count")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  municipality Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  garage      Garage        @relation(fields: [garageId], references: [id], onDelete: Restrict)
+  routes      Route[]
+  schedules   Schedule[]
+}
+
+model Driver {
+  id              String   @id @default(cuid())
+  name            String
+  cpf             String
+  employeeId      String   @map("employee_id")
+  address         String
+  phone           String
+  email           String
+  licenseNumber   String   @map("license_number")
+  licenseCategory String   @map("license_category")
+  licenseExpiry   String   @map("license_expiry") // YYYY-MM-DD
+  municipalityIds Json     @map("municipality_ids") // string[]
+  status          String   // active | inactive
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  routes    Route[]
+  schedules Schedule[]
+}
+
+model Student {
+  id                   String   @id @default(cuid())
+  name                 String
+  registrationNumber   String   @map("registration_number")
+  birthDate            String   @map("birth_date") // YYYY-MM-DD
+  grade                String
+  shift                String   // morning | afternoon | integral (night legado)
+  schoolId             String   @map("school_id")
+  municipalityId       String   @map("municipality_id")
+  address              String
+  boardingPoint        Json     @map("boarding_point") // { address, coordinates }
+  alightingPoint      Json     @map("alighting_point")
+  responsible          Json     // Responsible
+  specialNeeds         Boolean  @default(false) @map("special_needs")
+  specialNeedsDesc     String?  @map("special_needs_description")
+  routeId              String?  @map("route_id")
+  status               String   // active | inactive | transferred
+  photo                String
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  municipality Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  route    Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+}
+
+model Route {
+  id                String   @id @default(cuid())
+  name              String
+  municipalityId    String   @map("municipality_id")
+  vehicleId         String?  @map("vehicle_id")   // opcional: veículo definido na escala
+  driverId          String?  @map("driver_id")   // opcional: motorista definido na escala
+  schoolId          String   @map("school_id")
+  garageId          String?  @map("garage_id")   // garagem de origem (obrigatória na roteirização)
+  shift             String   // morning | afternoon | integral (night legado)
+  totalStudents     Int      @default(0) @map("total_students")
+  totalStops        Int      @default(0) @map("total_stops")
+  estimatedKm       Float    @default(0) @map("estimated_km")
+  estimatedDuration Int      @default(0) @map("estimated_duration") // minutes
+  status            String   // active | inactive | in_progress | completed
+  scheduleId        String?  @map("schedule_id")
+  stops             Json     // Stop[]
+  polyline          String   @default("")
+  origin            Json     // Coordinates
+  createdAt         DateTime @default(now()) @map("created_at")
+  lastUpdated       DateTime @updatedAt @map("last_updated")
+  generatedAt       DateTime? @map("generated_at")
+  createdBy         String?  @map("created_by")
+
+  municipality Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver      Driver?        @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  garage      Garage?       @relation(fields: [garageId], references: [id], onDelete: SetNull)
+  creator     Usuario?      @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  students    Student[]
+  schedules   Schedule[]
+}
+
+model Schedule {
+  id        String   @id @default(cuid())
+  name      String
+  routeId   String   @map("route_id")
+  vehicleId String   @map("vehicle_id")
+  driverId  String   @map("driver_id")
+  date      String   // YYYY-MM-DD
+  shift     String   // morning | afternoon | integral (night legado)
+  status    String   // scheduled | in_progress | completed | cancelled
+  startTime String   @map("start_time") // HH:MM
+  endTime   String   @map("end_time")   // HH:MM
+  /// data = avulsa ou recorrência por período; frequency = modo frequência (semana)
+  scheduleKind String @default("data") @map("schedule_kind")
+  /// Ordem da última parada concluída (`Stop.order`); 0 = ainda na origem. Atualizado pelo app do motorista.
+  lastPassedStopOrder Int      @default(0) @map("last_passed_stop_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  route    Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver   Driver    @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  incidents Incident[]
+}
+
+model Incident {
+  id             String    @id @default(cuid())
+  routeId        String    @map("route_id")
+  scheduleId     String    @map("schedule_id")
+  type           String    // delay_traffic | delay_other | mechanical_failure | ...
+  description    String
+  estimatedDelay Int?      @map("estimated_delay") // minutes
+  location       Json      // Coordinates
+  registeredAt   DateTime  @map("registered_at")
+  resolvedAt     DateTime? @map("resolved_at")
+  status         String    // active | resolved
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+}
+
+/// Usuários do painel web (ADMIN / GESTOR / OPERADOR). Tabela física: usuarios.
+/// GESTOR/OPERADOR: `ufAtuacao` + `usuarioMunicipios` (cidades da mesma UF). ADMIN: opcional.
+model Usuario {
+  id                 String         @id @default(cuid())
+  nomeCompleto       String         @map("nome_completo")
+  cpf                String         @unique
+  email              String         @unique
+  telefone           String
+  login              String         @unique
+  passwordHash       String         @map("senha_hash")
+  perfil             UsuarioPerfil
+  status             UsuarioStatus
+  /// UF de atuação (2 letras). Obrigatório para GESTOR/OPERADOR com cidades vinculadas.
+  ufAtuacao          String?        @map("uf_atuacao") @db.VarChar(2)
+  setorUnidade       UsuarioSetor?  @map("setor_unidade")
+  deveTrocarSenha    Boolean        @default(false) @map("deve_trocar_senha")
+  /// Foto do perfil (URL ou data URL). Opcionalmente cifrado em repouso — ver `AT_REST_ENCRYPTION_KEY`.
+  fotoPerfil         String?        @map("foto_perfil") @db.Text
+  /// Usuário (gestor/admin) que criou este cadastro — usado para restringir edição/exclusão por gestor.
+  criadoPorUsuarioId String?        @map("criado_por_usuario_id")
+  ultimoAcessoEm     DateTime?      @map("ultimo_acesso_em")
+  criadoEm           DateTime       @default(now()) @map("criado_em")
+  atualizadoEm       DateTime       @updatedAt @map("atualizado_em")
+
+  usuarioMunicipios  UsuarioMunicipio[]
+  routesCreated      Route[]
+  auditoriasAlvo     UsuarioAuditoria[] @relation("AuditoriaAlvo")
+  auditoriasComoAtor UsuarioAuditoria[] @relation("AuditoriaAtor")
+  criadoPor          Usuario?       @relation("UsuarioCriadoPor", fields: [criadoPorUsuarioId], references: [id], onDelete: SetNull)
+  usuariosCriados    Usuario[]      @relation("UsuarioCriadoPor")
+
+  @@map("usuarios")
+}
+
+/// Cidades de atuação do usuário (uma ou mais, todas na mesma UF indicada em `Usuario.ufAtuacao`).
+model UsuarioMunicipio {
+  id            String       @id @default(cuid())
+  usuarioId     String       @map("usuario_id")
+  municipioId   String       @map("municipio_id")
+  usuario       Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  municipality  Municipality @relation(fields: [municipioId], references: [id], onDelete: Restrict)
+
+  @@unique([usuarioId, municipioId])
+  @@map("usuario_municipios")
+}
+
+/// Matriz de permissões por perfil (GESTOR / OPERADOR). `permissoes` null = acesso total ao painel.
+model PerfilPermissao {
+  perfil         UsuarioPerfil @id
+  permissoes     Json?
+  atualizadoEm   DateTime      @updatedAt @map("atualizado_em")
+
+  @@map("perfil_permissoes")
+}
+
+model UsuarioAuditoria {
+  id              String                 @id @default(cuid())
+  usuarioAlvoId   String                 @map("usuario_alvo_id")
+  acao            UsuarioAuditoriaAcao
+  atorId          String?                @map("ator_id")
+  detalhes        Json?
+  criadoEm        DateTime               @default(now()) @map("criado_em")
+
+  usuarioAlvo     Usuario                @relation("AuditoriaAlvo", fields: [usuarioAlvoId], references: [id], onDelete: Cascade)
+  ator            Usuario?               @relation("AuditoriaAtor", fields: [atorId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioAlvoId])
+  @@map("usuario_auditoria")
+}
+
+model ParentUser {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  studentsIds Json     @map("students_ids") // string[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
