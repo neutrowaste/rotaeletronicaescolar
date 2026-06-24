@@ -10,8 +10,8 @@ COPY packages/shared-utils/package.json packages/shared-utils/package.json
 COPY packages/shared-mocks/package.json packages/shared-mocks/package.json
 COPY apps/api/package.json apps/api/package.json
 
-# Instala todas as dependências (incluindo as de dev necessárias para build)
-RUN npm ci
+# Instala todas as dependências ignorando scripts automáticos de postinstall
+RUN npm ci --ignore-scripts
 
 # Copia códigos fontes necessários
 COPY packages/shared-types packages/shared-types
