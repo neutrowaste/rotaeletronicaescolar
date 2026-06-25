@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../src/lib/prisma.js';
-import { UsuarioPerfil, UsuarioStatus } from '../node_modules/.prisma/api-client/index.js';
+import { PrismaClient, UsuarioPerfil, UsuarioStatus } from '../node_modules/.prisma/api-client/index.js';
+
+const prisma = new PrismaClient();
 
 async function main() {
   const login = 'tiago';
