@@ -13,7 +13,7 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
-const BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? 'http://localhost:3001';
+const BASE = ((import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
 const API_BASE = `${BASE}/api`;
 
 /** Payload de sessão retornado por login, bootstrap, /auth/me e PATCH /auth/me */
